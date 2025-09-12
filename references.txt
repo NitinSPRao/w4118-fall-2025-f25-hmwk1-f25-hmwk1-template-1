@@ -17,5 +17,5 @@ used for doing programming part 3.
 4.  http://wiki.c2.com/?WeirdErrorMessages, used for debugging programming part 1.
 
 /* replace with your name and UNI */
-YOUR NAME
-YOUR UNI
+Nitin Rao
+nsr2144
