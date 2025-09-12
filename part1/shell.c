@@ -5,11 +5,41 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <errno.h>
+#include <signal.h>
 
+#define MAX_ARGS 128
 static void die(const char *s)
 {
     perror(s);
     exit(1);
+}
+
+static int tokenize(char *line, char *argv[], int max)
+{
+    int argc = 0;
+
+    while (*line == ' ') line++;
+
+    while (*line != '\0')
+    {
+        if (argc >= max - 1) {
+            fprintf(stderr, "too many arguments (max %d)\n", max - 1);
+            return -1;
+        }
+        argv[argc++] = line;
+
+        while (*line != '\0' && *line != ' ') line++;
+
+        if (*line == '\0')
+            break;
+
+        *line++ = '\0';
+
+        while (*line == ' ') line++;
+    }
+
+    argv[argc] = NULL;
+    return argc;
 }
 
 int main(void)
@@ -34,6 +64,14 @@ int main(void)
             fflush(stdout);
             continue;
         }
+        
+        char *argv[MAX_ARGS];
+        int argc = tokenize(line, argv, MAX_ARGS);
+        if (argc < 0) {
+            printf("$");
+            fflush(stdout);
+            continue;
+        }
 
         pid = fork();
         if (pid < 0) {
@@ -53,8 +91,6 @@ int main(void)
         printf("$");
         fflush(stdout);
     }
-
-    /* EOF or error from getline */
     free(line);
     return 0;
 }
