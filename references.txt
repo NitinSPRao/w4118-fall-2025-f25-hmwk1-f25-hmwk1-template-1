@@ -1,6 +1,12 @@
 1. https://brennan.io/2015/01/16/write-a-shell-in-c/
 used for helping write the 'tokenize' function for part 1
 
+2. https://stackoverflow.com/questions/20057562/how-to-use-write-instead-of-printf
+used for helping replace printf with syscall in part2
+
+3. https://aquasecurity.github.io/tracee/v0.16/docs/events/builtin/syscalls/rt_sigaction/
+used for helping replace sigaction with syscall in part2
+
 /* OR delete the above statement and include a list of references */
 1.  http://www.sanfoundry.com/operating-system-questions-answers-processes/,
 used for answering Exercise 1.4.
