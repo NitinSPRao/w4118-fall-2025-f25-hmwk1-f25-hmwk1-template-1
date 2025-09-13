@@ -1,7 +1,5 @@
 #define _GNU_SOURCE
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -13,6 +11,8 @@
 #define MAX_ARGS 128
 #define MAX_LINE 1024
 
+extern char **environ;
+
 static int tokenize(char *line, char *argv[], int max)
 {
     int argc = 0;
@@ -22,7 +22,6 @@ static int tokenize(char *line, char *argv[], int max)
     while (*line != '\0')
     {
         if (argc >= max - 1) {
-            // fprintf(stderr, "error: too many arguments (max %d)\n", max - 1);
             syscall(SYS_write, 2, "error: too many arguments (max 127)\n", 37);
             return -1;
         }
@@ -41,33 +40,53 @@ static int tokenize(char *line, char *argv[], int max)
     argv[argc] = NULL;
     return argc;
 }
+static void sh_err_msg(const char *m) {
+    syscall(SYS_write, STDERR_FILENO, "error: ", 7);
+    syscall(SYS_write, STDERR_FILENO, m, strlen(m));
+    syscall(SYS_write, STDERR_FILENO, "\n", 1);
+}
+
+static void sh_errno(void) {
+    int e = errno;
+    const char *pfx = "error: ";
+    const char *msg = strerror(e);
+    syscall(SYS_write, STDERR_FILENO, pfx, 7);
+    syscall(SYS_write, STDERR_FILENO, msg, strlen(msg));
+    syscall(SYS_write, STDERR_FILENO, "\n", 1);
+}
 
 static int handle_builtin(char *argv[])
 {
     if (argv[0] == NULL) return 1;
 
-    if (strcmp(argv[0], "exit") == 0) {
-        return 0;
-    }
+    if (strcmp(argv[0], "exit") == 0) return 0;
 
-    if(strcmp(argv[0], "cd") == 0) {
+    if (strcmp(argv[0], "cd") == 0) {
         if (argv[1] == NULL || argv[2] != NULL) {
-            fprintf(stderr, "error: %s\n", "usage: cd <dir>");
-        } else if (chdir(argv[1]) == -1) {
-            fprintf(stderr, "error: %s\n", strerror(errno));
+            sh_err_msg("usage: cd <dir>");
+        } else if (syscall(SYS_chdir, argv[1]) == -1) {
+            sh_errno();
         }
         return 1;
     }
-    
     return 2;
+}
+
+static void set_sigint_default(void)
+{
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = SIG_DFL;
+    syscall(SYS_rt_sigaction, SIGINT, &sa, NULL, 8);
 }
 
 static void install_signal_handlers(void) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = SIG_IGN;
-    sigaction(SIGINT, &sa, NULL);
+    syscall(SYS_rt_sigaction, SIGINT, &sa, NULL, 8);
 }
+
 
 static pid_t sh_fork(void) {
     long r;
@@ -80,8 +99,6 @@ static pid_t sh_fork(void) {
     return (pid_t)r;
 }
 
-extern char **environ;
-
 static void sh_execve(char *const path, char *const argv[]) {
     long rc = syscall(SYS_execve, path, argv, environ);
     (void)rc;
@@ -91,29 +108,6 @@ static int sh_waitpid(pid_t pid, int *status) {
     long rc = syscall(SYS_wait4, (long)pid, status, 0, NULL);
     if (rc < 0) return -1;
     return 0;
-}
-
-// static void set_sigint_ignore(void) {
-//     struct sigaction sa;
-//     memset(&sa, 0, sizeof(sa));
-//     sa.sa_handler = SIG_IGN;
-//     syscall(SYS_rt_sigaction, SIGINT, &sa, NULL, sizeof(sigset_t));
-// }
-
-static void set_sigint_default(void) {
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = SIG_DFL;
-    syscall(SYS_rt_sigaction, SIGINT, &sa, NULL, sizeof(sigset_t));
-}
-
-static void sh_errno(void) {
-    int e = errno;
-    const char *pfx = "error: ";
-    const char *msg = strerror(e);
-    syscall(SYS_write, STDERR_FILENO, pfx, 7);
-    syscall(SYS_write, STDERR_FILENO, msg, strlen(msg));
-    syscall(SYS_write, STDERR_FILENO, "\n", 1);
 }
 
 static ssize_t sh_readline(char *buf, size_t cap) {
