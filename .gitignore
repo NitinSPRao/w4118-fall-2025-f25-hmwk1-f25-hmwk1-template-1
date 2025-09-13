@@ -1,2 +1,6 @@
 .vscode/c_cpp_properties.json
 .vscode/settings.json
+part1/trace.txt
+.gitignore
+part2/trace.txt
+part1/w4118_sh

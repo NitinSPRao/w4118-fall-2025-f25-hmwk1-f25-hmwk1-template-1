@@ -8,7 +8,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-#include <signal.h> // Ensure struct sigaction is defined
 
 #define MAX_ARGS 128
 static int tokenize(char *line, char *argv[], int max)
@@ -20,7 +19,7 @@ static int tokenize(char *line, char *argv[], int max)
     while (*line != '\0')
     {
         if (argc >= max - 1) {
-            fprintf(stderr, "too many arguments (max %d)\n", max - 1);
+            fprintf(stderr, "error: too many arguments (max %d)\n", max - 1);
             return -1;
         }
         argv[argc++] = line;
